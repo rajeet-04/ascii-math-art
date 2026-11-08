@@ -27,16 +27,19 @@
 
 const LOOP = 26, G_UP = 4.0, G = 1.1, DRAG = 0.85, CW = 9, CH = 15;
 // the letter grid follows the screen: wide screens get 128 columns, phones fewer, rows fill the height
-let W, H, COLS, ROWS, ASPECT, F, AIM_Y, TALL;
+let W, H, COLS, ROWS, ASPECT, F, AIM_Y, TALL, R = 1, ZOOM = 1;
 function measure() {
   const w = innerWidth, h = innerHeight;
   TALL = h > w;
-  COLS = Math.round(TALL ? Math.min(128, Math.max(96, w / 3.4)) : Math.min(128, Math.max(72, w / 5)));   // phones: finer grid so letters stay readable
+  // characters stay about 8 px wide on big screens; phones get a finer grid so letters stay readable
+  COLS = Math.round(TALL ? Math.min(128, Math.max(96, w / 3.4)) : Math.min(220, Math.max(72, w / 8.5)));
   ROWS = Math.max(24, Math.round(COLS * CW * h / w / CH));
   W = COLS * CW; H = ROWS * CH; ASPECT = W / H;
   F = ASPECT >= 1.1 ? Math.min(2.2, 2.64 / ASPECT) : 2.0;          // wide screens zoom out to keep the sky's height; narrow ones fit the greeting
   const tilt = Math.max(0.27, 0.22 / (F * 0.5 * ASPECT));           // tall screens: horizon about 3/4 down, water below
   AIM_Y = 0.55 + 8 * tilt;
+  ZOOM = TALL ? 1 : Math.min(1.4, 2.2 / F);                        // wide screens: grow the greeting back to ~70% width
+  R = Math.min(2, Math.max(1, w * (devicePixelRatio || 1) / W));     // draw at the screen's real pixel density (never more), so glyphs stay sharp
 }
 measure();
 const AFTERGLOW = 0.6;
@@ -220,7 +223,7 @@ function lettering(tall) {
   for (let i = 0; i <= 300; i++) { const a = -1 + 2 * i / 300; g.lineTo(600 + 270 * a, 262 + 9 * Math.sin(a * 3 * Math.PI) * (1 - a * a)); }
   g.stroke();
   g.beginPath(); g.moveTo(600, 248); g.lineTo(614, 262); g.lineTo(600, 276); g.lineTo(586, 262); g.fill();
-  const px = g.getImageData(0, 0, 1200, 540).data, P = [], T = [], s = (tall ? 9.7 : 7.8) / 1200;                 // tall: ~89% of the width visible at the text's distance
+  const px = g.getImageData(0, 0, 1200, 540).data, P = [], T = [], s = (tall ? 9.7 : 7.8 * ZOOM) / 1200;                 // tall: ~89% of the width visible at the text's distance
   for (let y = 0; y < 540; y += 4) for (let x2 = 0; x2 < 1200; x2 += 4)
     if (px[(y * 1200 + x2) * 4] > 110) {
       // tall screens: condensed letters, stretched upward into the spare height
@@ -230,8 +233,8 @@ function lettering(tall) {
   return { P, T };
 }
 let TXT_P, TXT_TAG, XN, TXT_R, HELD, TEXT_TALL;
-function buildText() {                                              // rebuilt when the screen turns
-  TEXT_TALL = TALL;
+function buildText() {                                              // rebuilt when the screen turns or widens
+  TEXT_TALL = `${TALL}${ZOOM.toFixed(2)}`;
   ({ P: TXT_P, T: TXT_TAG } = lettering(TALL));
   const xs = TXT_P.map(p => p[0]), lo = Math.min(...xs), hi = Math.max(...xs);
   XN = xs.map(x => (x - lo) / (hi - lo));
@@ -462,30 +465,31 @@ const view = document.getElementById("view"), out = view.getContext("2d");
 const art = document.createElement("canvas"), ink = art.getContext("2d");
 const halo1 = document.createElement("canvas"), halo2 = document.createElement("canvas");
 function size() {
-  for (const [c, k] of [[view, 1], [art, 1], [halo1, 5], [halo2, 14]]) { c.width = Math.max(1, W / k | 0); c.height = Math.max(1, H / k | 0); }
-  ink.fillStyle = "#000"; ink.fillRect(0, 0, W, H);
-}
-size();
-const atlas = Object.assign(document.createElement("canvas"), { width: CW * GLYPHS.length, height: CH * COLORS.length });
-(() => {                                                            // one tinted row of glyphs per colour
-  const g = atlas.getContext("2d");
-  g.font = "14px Menlo, Consolas, 'DejaVu Sans Mono', 'Courier New', monospace";
+  for (const [c, k] of [[view, 1], [art, 1], [halo1, 5], [halo2, 14]]) { c.width = Math.max(1, W * R / k | 0); c.height = Math.max(1, H * R / k | 0); }
+  ink.fillStyle = "#000"; ink.fillRect(0, 0, W * R, H * R);
+  // one tinted row of glyphs per colour, rendered at the drawing density
+  atlas.width = Math.ceil(CW * R) * GLYPHS.length; atlas.height = Math.ceil(CH * R) * COLORS.length;
+  const g = atlas.getContext("2d"), cw = Math.ceil(CW * R), ch = Math.ceil(CH * R);
+  g.font = `${14 * R}px Menlo, Consolas, 'DejaVu Sans Mono', 'Courier New', monospace`;
   g.textAlign = "center"; g.textBaseline = "middle";
   COLORS.forEach(([r, gg, b], row) => {
     g.fillStyle = `rgb(${r},${gg},${b})`;
-    GLYPHS.forEach((ch, i) => g.fillText(ch, i * CW + CW / 2, row * CH + CH / 2 + 1));
+    GLYPHS.forEach((c, i) => g.fillText(c, i * cw + cw / 2, row * ch + ch / 2 + R));
   });
-})();
+}
+const atlas = document.createElement("canvas");
+size();
 
 function paint(t, stats) {
   ink.globalCompositeOperation = "source-over"; ink.globalAlpha = 1;
-  ink.fillStyle = `rgba(0,0,0,${1 - AFTERGLOW})`; ink.fillRect(0, 0, W, H);   // previous frame fades
+  const VW = W * R, VH = H * R, cw = Math.ceil(CW * R), ch = Math.ceil(CH * R), dx = CW * R, dy = CH * R;
+  ink.fillStyle = `rgba(0,0,0,${1 - AFTERGLOW})`; ink.fillRect(0, 0, VW, VH);   // previous frame fades
   ink.globalCompositeOperation = "lighten";
   for (let c = 0; c < N; c++) {
     const g = char[c], l = lum[c];
     if (!g || l < 0.02) continue;
     ink.globalAlpha = Math.min(l, 1);
-    ink.drawImage(atlas, g * CW, tag[c] * CH, CW, CH, (c % COLS) * CW, ((c / COLS) | 0) * CH, CW, CH);
+    ink.drawImage(atlas, g * cw, tag[c] * ch, cw, ch, (c % COLS) * dx, ((c / COLS) | 0) * dy, cw, ch);
   }
   out.globalCompositeOperation = "source-over"; out.globalAlpha = 1;
   out.drawImage(art, 0, 0);
@@ -494,16 +498,16 @@ function paint(t, stats) {
   for (const [h, gain] of [[halo1, 0.75], [halo2, 0.45]]) {
     const g = h.getContext("2d"); g.imageSmoothingQuality = "high";
     g.clearRect(0, 0, h.width, h.height); g.drawImage(art, 0, 0, h.width, h.height);
-    out.globalAlpha = gain; out.drawImage(h, 0, 0, W, H);
+    out.globalAlpha = gain; out.drawImage(h, 0, 0, VW, VH);
   }
   out.globalCompositeOperation = "source-over"; out.globalAlpha = 1;
-  out.font = "15px Menlo, Consolas, monospace"; out.textAlign = "right";
+  out.font = `${15 * R}px Menlo, Consolas, monospace`; out.textAlign = "right";
   [`${t.toFixed(2).padStart(5)} s`, `shells ${String(stats.active).padStart(2)}`, `sparks ${String(stats.drawn).padStart(5)}`, "rajeet-04 · 2026"]
-    .forEach((s, i) => { out.fillStyle = i < 3 ? "rgb(150,120,70)" : "rgb(120,110,130)"; out.fillText(s, W - 28, 36 + 20 * i); });
+    .forEach((s, i) => { out.fillStyle = i < 3 ? "rgb(150,120,70)" : "rgb(120,110,130)"; out.fillText(s, VW - 28 * R, (36 + 20 * i) * R); });
 }
 
 let t = 0, running = true, last = null;
-const replay = () => { t = 0; ink.globalCompositeOperation = "source-over"; ink.globalAlpha = 1; ink.fillStyle = "#000"; ink.fillRect(0, 0, W, H); };
+const replay = () => { t = 0; ink.globalCompositeOperation = "source-over"; ink.globalAlpha = 1; ink.fillStyle = "#000"; ink.fillRect(0, 0, W * R, H * R); };
 addEventListener("keydown", e => {
   if (e.key === " ") { running = !running; e.preventDefault(); }
   else if (e.key === "r" || e.key === "R") replay();
@@ -513,7 +517,7 @@ view.addEventListener("click", () => { running = !running; });
 let resizing;
 addEventListener("resize", () => {                                  // rotate or resize: rebuild the grid
   clearTimeout(resizing);
-  resizing = setTimeout(() => { measure(); grids(); size(); if (TALL !== TEXT_TALL) buildText(); }, 150);
+  resizing = setTimeout(() => { measure(); grids(); size(); if (`${TALL}${ZOOM.toFixed(2)}` !== TEXT_TALL) buildText(); }, 150);
 });
 
 function tick(now) {
