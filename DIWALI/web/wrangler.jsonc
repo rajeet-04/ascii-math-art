@@ -1,0 +1,9 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "diwali",
+  "compatibility_date": "2026-11-08",
+  // Static site only: the animation runs entirely in the visitor's browser.
+  "assets": { "directory": "./public" },
+  "routes": [{ "pattern": "diwali.rajeet.in", "custom_domain": true }],
+  "workers_dev": false
+}
