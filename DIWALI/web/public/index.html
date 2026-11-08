@@ -208,9 +208,10 @@ function lettering(tall) {
   const c = document.createElement("canvas"); c.width = 1200; c.height = 540;
   const g = c.getContext("2d", { willReadFrequently: true });
   g.fillStyle = g.strokeStyle = "#fff"; g.textBaseline = "middle"; g.lineJoin = "round";
-  // upright on tall screens: italics turn to mush at a phone's letter size
-  g.font = `${tall ? "" : "italic "}bold 205px Georgia, 'Times New Roman', serif`; g.textAlign = "center"; g.lineWidth = 4;
-  g.fillText("Happy", 600, 140); g.strokeText("Happy", 600, 140);
+  // tall screens set "Happy" larger so it uses the line's width as well
+  const hy = tall ? 150 : 140;
+  g.font = `italic bold ${tall ? 250 : 205}px Georgia, 'Times New Roman', serif`; g.textAlign = "center"; g.lineWidth = tall ? 5 : 4;
+  g.fillText("Happy", 600, hy); g.strokeText("Happy", 600, hy);
   g.font = "bold 205px Georgia, 'Times New Roman', serif"; g.textAlign = "left"; g.lineWidth = 6;
   const word = "DIWALI", gap = 30, widths = [...word].map(ch => g.measureText(ch).width);
   let x = 600 - (widths.reduce((a, b) => a + b) + gap * 5) / 2;
@@ -219,11 +220,11 @@ function lettering(tall) {
   for (let i = 0; i <= 300; i++) { const a = -1 + 2 * i / 300; g.lineTo(600 + 270 * a, 262 + 9 * Math.sin(a * 3 * Math.PI) * (1 - a * a)); }
   g.stroke();
   g.beginPath(); g.moveTo(600, 248); g.lineTo(614, 262); g.lineTo(600, 276); g.lineTo(586, 262); g.fill();
-  const px = g.getImageData(0, 0, 1200, 540).data, P = [], T = [], s = (tall ? 8.6 : 7.8) / 1200;
+  const px = g.getImageData(0, 0, 1200, 540).data, P = [], T = [], s = (tall ? 9.7 : 7.8) / 1200;                 // tall: ~89% of the width visible at the text's distance
   for (let y = 0; y < 540; y += 4) for (let x2 = 0; x2 < 1200; x2 += 4)
     if (px[(y * 1200 + x2) * 4] > 110) {
       // tall screens: condensed letters, stretched upward into the spare height
-      P.push([(x2 - 600) * s, TEXT_C[1] + (tall ? 0.9 : 0) + (270 - y) * s * (tall ? 1.7 : 1), TEXT_C[2] + 0.02 * Math.sin(x2 * 0.05)]);
+      P.push([(x2 - 600) * s, TEXT_C[1] + (tall ? 1.3 : 0) + (270 - y) * s * (tall ? 1.5 : 1), TEXT_C[2] + 0.02 * Math.sin(x2 * 0.05)]);
       T.push(y < 230 ? HAPPY : DIWALI);
     }
   return { P, T };
