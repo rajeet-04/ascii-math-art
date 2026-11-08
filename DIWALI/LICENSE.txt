@@ -1,0 +1,14 @@
+Happy Diwali (diwali.py)
+Copyright (c) 2026 rajeet-04
+
+You are welcome to run this program, read it, learn from it and modify it
+for your own non-commercial projects.
+
+You may not sell it, sell modified versions of it, or use it or the images
+and video it produces commercially without written permission from
+rajeet-04. Do not present the work as your own.
+
+When you share something made with it, credit rajeet-04
+(https://github.com/rajeet-04).
+
+The software is provided "as is", without warranty of any kind.

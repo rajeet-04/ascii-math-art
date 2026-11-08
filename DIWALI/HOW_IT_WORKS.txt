@@ -1,0 +1,51 @@
+HOW IT WORKS - Diwali
+rajeet-04
+
+The whole artwork is one Python file. It works in six steps.
+
+1. Where you stand
+   The camera sits low by the water and looks up into a black sky.
+   It drifts a little, like someone watching, and lifts slightly when
+   the greeting appears. Everything is projected in true perspective,
+   so near shells look bigger and far ones smaller.
+
+2. The sky shots
+   Every shell is planned once: when it launches, where, how high it
+   bursts, its colours and its kind. A rising shell follows a ballistic
+   arc (it slows under gravity and stops exactly at its burst height),
+   with a hot white head, a gold tail and sparks shed behind it.
+
+3. The bursts
+   Each burst throws stars outward. Their flight is solved exactly for
+   air drag and gravity, so stars race out, slow down and droop.
+   - peony: stars spread evenly over a sphere (a golden-angle spiral)
+   - chrysanthemum: the same sphere with long glowing streaks
+   - ring: a tilted circle with a small core of another colour
+   - willow: heavy drag, long gold trails that hang and crackle
+   - palm: a few thick arms reaching up and bending over
+   Stars change colour late in their life and strobe as they burn out.
+   The show builds up, ends in a fan of shells, then quiets.
+
+4. The greeting
+   "Happy" in italics over spaced capitals "DIWALI", with a small
+   flourish, is turned into thousands of points in the sky. One large
+   shell bursts, and its stars fly along curved paths that overshoot and
+   settle onto the letters, writing them from left to right. The letters
+   shimmer, glints run over them, and then they break apart into
+   falling embers.
+
+5. The city and the water
+   A city skyline with two temple domes sits across the water. Windows
+   glow, strings of little lamps run along the rooftops with a light
+   chasing through them, and every burst briefly lights the buildings.
+   Every spark is mirrored in the water with a gentle ripple.
+
+6. From points to letters
+   The screen is a grid of letter cells. Solid things (the city and the
+   greeting) are drawn nearest-first, with outlines  | / \ - _  where
+   they meet the sky. A spark is drawn by how bright it is ( . : + * );
+   a moving spark becomes a short stroke along its direction ( - / | \ );
+   reflections become  ~ . Each burst opens with a white star and rays.
+   Each cell is drawn as a small glyph in its colour, the previous
+   frame fades behind it for trails, a soft glow is added, and the
+   picture updates up to 30 times a second.
