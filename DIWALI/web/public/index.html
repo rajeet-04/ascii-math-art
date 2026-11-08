@@ -27,10 +27,11 @@
 
 const LOOP = 26, G_UP = 4.0, G = 1.1, DRAG = 0.85, CW = 9, CH = 15;
 // the letter grid follows the screen: wide screens get 128 columns, phones fewer, rows fill the height
-let W, H, COLS, ROWS, ASPECT, F, AIM_Y;
+let W, H, COLS, ROWS, ASPECT, F, AIM_Y, TALL;
 function measure() {
   const w = innerWidth, h = innerHeight;
-  COLS = Math.round(Math.min(128, Math.max(72, w / 5)));
+  TALL = h > w;
+  COLS = Math.round(TALL ? Math.min(128, Math.max(96, w / 3.4)) : Math.min(128, Math.max(72, w / 5)));   // phones: finer grid so letters stay readable
   ROWS = Math.max(24, Math.round(COLS * CW * h / w / CH));
   W = COLS * CW; H = ROWS * CH; ASPECT = W / H;
   F = ASPECT >= 1.1 ? Math.min(2.2, 2.64 / ASPECT) : 2.0;          // wide screens zoom out to keep the sky's height; narrow ones fit the greeting
@@ -202,12 +203,13 @@ function burst(s, b) {
 const TEXT_C = [0, 4.3, -1];
 const T_BURST = 16.9, T_FLY = 1.1, T_FALL = 22.3, T_GONE = 2.6;
 
-function lettering() {
+function lettering(tall) {
   // "Happy" in italics over spaced capitals, a flourish between, sampled into 3D points
   const c = document.createElement("canvas"); c.width = 1200; c.height = 540;
   const g = c.getContext("2d", { willReadFrequently: true });
   g.fillStyle = g.strokeStyle = "#fff"; g.textBaseline = "middle"; g.lineJoin = "round";
-  g.font = "italic bold 205px Georgia, 'Times New Roman', serif"; g.textAlign = "center"; g.lineWidth = 4;
+  // upright on tall screens: italics turn to mush at a phone's letter size
+  g.font = `${tall ? "" : "italic "}bold 205px Georgia, 'Times New Roman', serif`; g.textAlign = "center"; g.lineWidth = 4;
   g.fillText("Happy", 600, 140); g.strokeText("Happy", 600, 140);
   g.font = "bold 205px Georgia, 'Times New Roman', serif"; g.textAlign = "left"; g.lineWidth = 6;
   const word = "DIWALI", gap = 30, widths = [...word].map(ch => g.measureText(ch).width);
@@ -217,21 +219,27 @@ function lettering() {
   for (let i = 0; i <= 300; i++) { const a = -1 + 2 * i / 300; g.lineTo(600 + 270 * a, 262 + 9 * Math.sin(a * 3 * Math.PI) * (1 - a * a)); }
   g.stroke();
   g.beginPath(); g.moveTo(600, 248); g.lineTo(614, 262); g.lineTo(600, 276); g.lineTo(586, 262); g.fill();
-  const px = g.getImageData(0, 0, 1200, 540).data, P = [], T = [], s = 7.8 / 1200;
+  const px = g.getImageData(0, 0, 1200, 540).data, P = [], T = [], s = (tall ? 8.6 : 7.8) / 1200;
   for (let y = 0; y < 540; y += 4) for (let x2 = 0; x2 < 1200; x2 += 4)
     if (px[(y * 1200 + x2) * 4] > 110) {
-      P.push([(x2 - 600) * s, TEXT_C[1] + (270 - y) * s, TEXT_C[2] + 0.02 * Math.sin(x2 * 0.05)]);
+      // tall screens: condensed letters, stretched upward into the spare height
+      P.push([(x2 - 600) * s, TEXT_C[1] + (tall ? 0.9 : 0) + (270 - y) * s * (tall ? 1.7 : 1), TEXT_C[2] + 0.02 * Math.sin(x2 * 0.05)]);
       T.push(y < 230 ? HAPPY : DIWALI);
     }
   return { P, T };
 }
-const { P: TXT_P, T: TXT_TAG } = lettering();
-const XMIN = Math.min(...TXT_P.map(p => p[0])), XMAX = Math.max(...TXT_P.map(p => p[0]));
-const XN = TXT_P.map(p => (p[0] - XMIN) / (XMAX - XMIN));
-const TXT_R = (r => TXT_P.map(() => [r(), r(), r()]))(rng(17));
+let TXT_P, TXT_TAG, XN, TXT_R, HELD, TEXT_TALL;
+function buildText() {                                              // rebuilt when the screen turns
+  TEXT_TALL = TALL;
+  ({ P: TXT_P, T: TXT_TAG } = lettering(TALL));
+  const xs = TXT_P.map(p => p[0]), lo = Math.min(...xs), hi = Math.max(...xs);
+  XN = xs.map(x => (x - lo) / (hi - lo));
+  TXT_R = (r => TXT_P.map(() => [r(), r(), r()]))(rng(17));
+  HELD = new Uint8Array(TXT_P.length);
+}
+buildText();
 const TXT_SHELL = makeShell(0, 0, TEXT_C[2], TEXT_C[1], null, null, 0, rng(5));
 Object.assign(TXT_SHELL, { t0: T_BURST - TXT_SHELL.tr, tb: T_BURST, drift: 0, top: TEXT_C.slice() });
-const HELD = new Uint8Array(TXT_P.length);
 
 function greeting(t) {
   const [Cx, Cy, Cz] = TEXT_C;
@@ -504,7 +512,7 @@ view.addEventListener("click", () => { running = !running; });
 let resizing;
 addEventListener("resize", () => {                                  // rotate or resize: rebuild the grid
   clearTimeout(resizing);
-  resizing = setTimeout(() => { measure(); grids(); size(); }, 150);
+  resizing = setTimeout(() => { measure(); grids(); size(); if (TALL !== TEXT_TALL) buildText(); }, 150);
 });
 
 function tick(now) {
